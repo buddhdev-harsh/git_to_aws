@@ -1,0 +1,53 @@
+name: push project_1 docker image to ECR 
+on: 
+  push:
+    branches:
+      - 'main'
+      
+jobs: 
+  changes:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            project_1_ :
+              - 'project_1_wordpress/**'
+             project_2_ :
+              - ' project_2_wordpress/**'
+    
+      - name: check for changes
+        if: ${{ steps.changes.outputs.project_1_  == 'true' || steps.changes.outputs. project_2_  == 'true'}}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        if: ${{ steps.changes.outputs.project_1_  == 'true' || steps.changes.outputs. project_2_  == 'true'}}
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        if: ${{ steps.changes.outputs.project_1_  == 'true'}}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: wordpress_am
+          IMAGE_TAG: project_1
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG project_1_wordpress/.
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Build, tag, and push image to Amazon ECR
+        if: ${{ steps.changes.outputs. project_2_  == 'true'}}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: wordpress_am
+          IMAGE_TAG:  project_2
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG  project_2_wordpress/.
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      
